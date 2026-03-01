@@ -1,147 +1,22 @@
-# import streamlit as st
-# import pickle
-# import pandas as pd
-# import requests
-#
-# def fetch_poster(movie_id):
-#     url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=5535662c3f612adb6fa98f2fcbbb0941"
-#     data = requests.get(url)
-#     data = data.json()
-#     poster_path = data['poster_path']
-#     full_path = "https://image.tmdb.org/t/p/w500/" + poster_path
-#     return full_path
-#
-# def recommend(movie):
-#     movie_index = movies[movies['title'] == movie].index[0]
-#     distances = similarity[movie_index]
-#     movies_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
-#     recommended_movies = []
-#     recommended_movies_posters =[]
-#     for i in movies_list:
-#         movie_id = movies.iloc[i[0]].movie_id
-#         recommended_movies.append(movies.iloc[i[0]].title)
-#         #fetch poster from API
-#         recommended_movies_posters.append(fetch_poster(movie_id))
-#     return recommended_movies
-# movies_dict = pickle.load(open('movie_dict.pkl','rb'))
-# movies = pd.DataFrame(movies_dict)
-#
-# similarity = pickle.load(open('similarity.pkl','rb'))
-#
-# st.title('Movie Recommendation System')
-#
-# selected_movie_name = st.selectbox('Select a movie you like',movies['title'].values)
-#
-# if st.button('Recommend'):
-#     names,posters = recommend(selected_movie_name)
-#     col1, col2, col3, col4, col5 = st.beta_columns(5)
-#     with col1:
-#         st.text(names[0])
-#         st.image(posters[0])
-#     with col2:
-#         st.text(names[1])
-#         st.image(posters[1])
-#     with col3:
-#         st.text(names[2])
-#         st.image(posters[2])
-#     with col4:
-#         st.text(names[3])
-#         st.image(posters[3])
-#     with col5:
-#         st.text(names[4])
-#         st.image(posters[4])
 import streamlit as st
 import pickle
 import pandas as pd
 import requests
-
-# ---------------- FETCH POSTER ---------------- #
-# def fetch_poster(movie_id):
-#     url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key=5535662c3f612adb6fa98f2fcbbb0941"
-#     response = requests.get(url)
-#     data = response.json()
-#
-#     if data.get('poster_path'):
-#         poster_path = data['poster_path']
-#         return "https://image.tmdb.org/t/p/w500/" + poster_path
-#     else:
-#         return "https://via.placeholder.com/500x750?text=No+Image"
-#
-# # ---------------- RECOMMEND FUNCTION ---------------- #
-# def recommend(movie):
-#     movie_index = movies[movies['title'] == movie].index[0]
-#     distances = similarity[movie_index]
-#
-#     movies_list = sorted(
-#         list(enumerate(distances)),
-#         reverse=True,
-#         key=lambda x: x[1]
-#     )[1:6]
-#
-#     recommended_movies = []
-#     recommended_posters = []
-#
-#     for i in movies_list:
-#         movie_id = movies.iloc[i[0]].movie_id
-#         recommended_movies.append(movies.iloc[i[0]].title)
-#         recommended_posters.append(fetch_poster(movie_id))
-#
-#     return recommended_movies, recommended_posters
-#
-#
-# # ---------------- LOAD DATA ---------------- #
-# movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
-# movies = pd.DataFrame(movies_dict)
-#
-# similarity = pickle.load(open('similarity.pkl', 'rb'))
-#
-# # ---------------- STREAMLIT UI ---------------- #
-# st.title('Movie Recommendation System')
-#
-# selected_movie_name = st.selectbox(
-#     'Select a movie you like',
-#     movies['title'].values
-# )
-#
-# if st.button('Recommend'):
-#     names, posters = recommend(selected_movie_name)
-#
-#     col1, col2, col3, col4, col5 = st.columns(5)
-#
-#     with col1:
-#         st.text(names[0])
-#         st.image(posters[0])
-#
-#     with col2:
-#         st.text(names[1])
-#         st.image(posters[1])
-#
-#     with col3:
-#         st.text(names[2])
-#         st.image(posters[2])
-#
-#     with col4:
-#         st.text(names[3])
-#         st.image(posters[3])
-#
-#     with col5:
-#         st.text(names[4])
-#         st.image(posters[4])
-import streamlit as st
-import pickle
-import pandas as pd
-import requests
+import joblib
+import os
+from sklearn.metrics.pairwise import cosine_similarity
 
 # ================= PAGE CONFIG =================
-st.set_page_config(page_title="Movie Recommender", layout="wide")
+st.set_page_config(page_title="Cine-Recommender", layout="wide")
 
-API_KEY = "5535662c3f612adb6fa98f2fcbbb0941"
+# ================= API KEY =================
+API_KEY = os.getenv("API_KEY", "5535662c3f612adb6fa98f2fcbbb0941")  # Set in Streamlit Cloud Secrets
 
 # ================= LOAD DATA =================
 movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 movies = pd.DataFrame(movies_dict)
 
-similarity = pickle.load(open('similarity.pkl', 'rb'))
+vectors = joblib.load("vectors.pkl")
 
 # ================= API FUNCTIONS =================
 
@@ -168,10 +43,18 @@ def fetch_trending():
     results = data.get("results", [])[:5]
 
     trending_movies = []
+
     for movie in results:
+        poster_path = movie.get("poster_path")
+        poster_url = (
+            "https://image.tmdb.org/t/p/w500/" + poster_path
+            if poster_path
+            else "https://via.placeholder.com/500x750?text=No+Image"
+        )
+
         trending_movies.append({
-            "title": movie["title"],
-            "poster": "https://image.tmdb.org/t/p/w500/" + movie["poster_path"]
+            "title": movie.get("title", "Unknown"),
+            "poster": poster_url
         })
 
     return trending_movies
@@ -181,10 +64,14 @@ def fetch_trending():
 
 def recommend(movie):
     movie_index = movies[movies['title'] == movie].index[0]
-    distances = similarity[movie_index]
+
+    # Compute similarity dynamically (memory efficient)
+    similarity_scores = cosine_similarity(
+        vectors[movie_index], vectors
+    ).flatten()
 
     movies_list = sorted(
-        list(enumerate(distances)),
+        list(enumerate(similarity_scores)),
         reverse=True,
         key=lambda x: x[1]
     )[1:6]
@@ -194,7 +81,7 @@ def recommend(movie):
     for i in movies_list:
         movie_id = movies.iloc[i[0]].movie_id
         title = movies.iloc[i[0]].title
-        score = i[1] * 100  # Keep full precision internally
+        score = i[1] * 100
 
         poster, overview, rating, release = fetch_movie_details(movie_id)
 
@@ -212,27 +99,27 @@ def recommend(movie):
 
 # ================= SIDEBAR =================
 
-st.sidebar.title("Movie Recommender")
+st.sidebar.title("🎬 Cine-Recommender")
 
 st.sidebar.markdown("🍿 Discover. Explore. Enjoy.")
-st.sidebar.markdown("Built with using Machine Learning concepts & Streamlit")
-st.sidebar.markdown("**Developed by Nagarjuna**")
+st.sidebar.markdown("Built using Machine Learning & Streamlit")
+st.sidebar.markdown("**Developed by Nagarjuna 🚀**")
 
 st.sidebar.markdown("---")
 
 with st.sidebar.expander("ℹ️ How This System Works"):
     st.write("""
-    • Movies were converted into numerical vectors using CountVectorizer.  
-    • Cosine similarity matrix precomputed  
-    • Top 5 most similar movies selected  
-    • Movie details fetched using TMDB API  
+    • Movies were converted into numerical vectors using CountVectorizer (Bag-of-Words).  
+    • Cosine similarity is computed dynamically for the selected movie.  
+    • Top 5 most similar movies are recommended.  
+    • Movie details are fetched live from the TMDB API.
     """)
 
 # ================= MAIN TITLE =================
 
-st.title(" Movie Recommendation System ")
+st.title("Movie Recommendation System")
 
-# ================= RECOMMENDATION SECTION (TOP) =================
+# ================= RECOMMENDATION SECTION =================
 
 st.subheader("🎥 Select a Movie You Like")
 
@@ -258,7 +145,7 @@ if st.button("Recommend Movies"):
             st.write(f"📊 Similarity: {recommendations[i]['score']:.4f}%")
             st.caption(recommendations[i]["overview"][:150] + "...")
 
-# ================= TRENDING SECTION (BOTTOM) =================
+# ================= TRENDING SECTION =================
 
 st.markdown("---")
 st.subheader("🔥 Trending Movies Today")
