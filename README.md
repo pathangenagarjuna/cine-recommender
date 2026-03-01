@@ -1,4 +1,4 @@
-Cine-Recommender
+**Cine-Recommender**
 
 An AI-powered Movie Recommendation System built using Machine Learning and deployed on Streamlit Cloud.
 
