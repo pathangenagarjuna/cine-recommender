@@ -84,8 +84,8 @@ This app is deployed on **Streamlit Cloud** and automatically updates when new c
 👨‍💻 Developed By
 
 **Nagarjuna Pathange**
-Machine Learning Enthusiast 
-Computer Science Student
+Machine Learning Enthusiast, 
+Computer Science Student,
 Movie Enthusiast
 
 ---
