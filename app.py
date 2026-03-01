@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 st.set_page_config(page_title="Cine-Recommender", layout="wide")
 
 # ================= API KEY =================
-API_KEY = os.getenv("API_KEY", "5535662c3f612adb6fa98f2fcbbb0941")  # Set in Streamlit Cloud Secrets
+API_KEY = os.getenv("API_KEY")  # Set in Streamlit Cloud Secrets
 
 # ================= LOAD DATA =================
 movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
@@ -157,3 +157,4 @@ for i in range(len(trending)):
     with trend_cols[i]:
         st.image(trending[i]["poster"])
         st.caption(trending[i]["title"])
+
